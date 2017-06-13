@@ -7,7 +7,6 @@ import java.util.Set;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
@@ -32,7 +31,7 @@ public class UserRepo implements java.io.Serializable {
     private String name;
 
     /** null. */
-    private String reference;
+    private String ref;
 
     /** null. */
     private String scopeId;
@@ -46,11 +45,16 @@ public class UserRepo implements java.io.Serializable {
     public UserRepo() {
     }
 
-    public UserRepo(String code, String name, String reference, String scopeId,
-            Set<UserBase> userBases, Set<UserSchema> userSchemas) {
+    public UserRepo(Long id) {
+        this.id = id;
+    }
+
+    public UserRepo(Long id, String code, String name, String ref,
+            String scopeId, Set<UserBase> userBases, Set<UserSchema> userSchemas) {
+        this.id = id;
         this.code = code;
         this.name = name;
-        this.reference = reference;
+        this.ref = ref;
         this.scopeId = scopeId;
         this.userBases = userBases;
         this.userSchemas = userSchemas;
@@ -58,7 +62,6 @@ public class UserRepo implements java.io.Serializable {
 
     /** @return null. */
     @Id
-    @GeneratedValue
     @Column(name = "ID", unique = true, nullable = false)
     public Long getId() {
         return this.id;
@@ -101,17 +104,17 @@ public class UserRepo implements java.io.Serializable {
     }
 
     /** @return null. */
-    @Column(name = "REFERENCE", length = 50)
-    public String getReference() {
-        return this.reference;
+    @Column(name = "REF", length = 50)
+    public String getRef() {
+        return this.ref;
     }
 
     /**
-     * @param reference
+     * @param ref
      *            null.
      */
-    public void setReference(String reference) {
-        this.reference = reference;
+    public void setRef(String ref) {
+        this.ref = ref;
     }
 
     /** @return null. */

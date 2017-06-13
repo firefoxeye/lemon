@@ -3,7 +3,7 @@ package com.mossle.core.servlet;
 import java.io.IOException;
 
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import javax.servlet.FilterChain;
@@ -38,6 +38,9 @@ public class ServletFilter extends ProxyFilter {
 
             // 如果符合redirect规则，进行跳转
             if (urlPatternMatcher.shouldRedirect(path)) {
+                logger.trace("{} should redirect {}",
+                        urlPatternMatcher.getUrlPattern(), urlPatternMatcher);
+
                 String redirectUrl = contextPath + path + "/";
                 logger.trace("redirect to : {}", path);
                 res.sendRedirect(redirectUrl);
@@ -79,12 +82,18 @@ public class ServletFilter extends ProxyFilter {
     }
 
     public void setServletMap(Map<String, Servlet> urlPatternMap) {
-        servletMap = new HashMap<UrlPatternMatcher, Servlet>();
+        servletMap = new LinkedHashMap<UrlPatternMatcher, Servlet>();
 
         for (Map.Entry<String, Servlet> entry : urlPatternMap.entrySet()) {
             UrlPatternMatcher urlPatternMatcher = UrlPatternMatcher
                     .create(entry.getKey());
             servletMap.put(urlPatternMatcher, entry.getValue());
         }
+    }
+
+    public void addServlet(String urlPattern, Servlet servlet) {
+        UrlPatternMatcher urlPatternMatcher = UrlPatternMatcher
+                .create(urlPattern);
+        servletMap.put(urlPatternMatcher, servlet);
     }
 }

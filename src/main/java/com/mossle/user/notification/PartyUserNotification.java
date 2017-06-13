@@ -2,6 +2,8 @@ package com.mossle.user.notification;
 
 import javax.annotation.Resource;
 
+import com.mossle.core.id.IdGenerator;
+
 import com.mossle.user.persistence.domain.UserBase;
 
 import org.slf4j.Logger;
@@ -13,23 +15,24 @@ public class PartyUserNotification implements UserNotification {
     private static Logger logger = LoggerFactory
             .getLogger(PartyUserNotification.class);
     private JdbcTemplate jdbcTemplate;
+    private IdGenerator idGenerator;
 
     // insert
-    private String insertPartyEntitySql = "insert into party_entity(name,reference,type_id) values(?,?,?)";
-    private String selectPartyEntitySql = "select id from party_entity where reference=? and type_id=?";
+    private String insertPartyEntitySql = "INSERT INTO PARTY_ENTITY(ID,NAME,REF,TYPE_ID) VALUES(?,?,?,?)";
+    private String selectPartyEntitySql = "SELECT ID FROM PARTY_ENTITY WHERE REF=? AND TYPE_ID=?";
 
     // update
-    private String updatePartyEntitySql = "update party_entity set name=? where reference=? and type_id=?";
+    private String updatePartyEntitySql = "UPDATE PARTY_ENTITY SET NAME=? WHERE REF=? AND TYPE_ID=?";
 
     // remove
-    private String removePartyStructSql = "delete from party_struct where STRUCT_TYPE_ID=? and PARENT_ENTITY_ID=? and CHILD_ENTITY_ID=?";
-    private String removePartyEntitySql = "delete from party_entity where id=?";
+    private String removePartyStructSql = "DELETE FROM PARTY_STRUCT WHERE STRUCT_TYPE_ID=? AND PARENT_ENTITY_ID=? AND CHILD_ENTITY_ID=?";
+    private String removePartyEntitySql = "DELETE FROM PARTY_ENTITY WHERE ID=?";
 
     public void insertUser(UserBase userBase) {
         Long typeId = 1L;
 
-        jdbcTemplate.update(insertPartyEntitySql, userBase.getUsername(),
-                userBase.getId(), typeId);
+        jdbcTemplate.update(insertPartyEntitySql, idGenerator.generateId(),
+                userBase.getUsername(), userBase.getId(), typeId);
     }
 
     public void updateUser(UserBase userBase) {
@@ -67,5 +70,10 @@ public class PartyUserNotification implements UserNotification {
     @Resource
     public void setJdbcTemplate(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
+    }
+
+    @Resource
+    public void setIdGenerator(IdGenerator idGenerator) {
+        this.idGenerator = idGenerator;
     }
 }

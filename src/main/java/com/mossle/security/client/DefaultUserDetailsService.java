@@ -1,9 +1,17 @@
 package com.mossle.security.client;
 
-import com.mossle.security.api.UserFetcher;
-import com.mossle.security.api.UserInfo;
-import com.mossle.security.impl.MockUserFetcher;
-import com.mossle.security.util.UserDetailsBuilder;
+import java.util.Collections;
+
+import com.mossle.api.tenant.TenantHolder;
+import com.mossle.api.userauth.UserAuthConnector;
+import com.mossle.api.userauth.UserAuthDTO;
+
+import com.mossle.core.mapper.BeanMapper;
+
+import com.mossle.security.impl.SpringSecurityUserAuth;
+
+import com.mossle.spi.user.AccountAliasConnector;
+import com.mossle.spi.user.AccountCredentialConnector;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,8 +23,13 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 public class DefaultUserDetailsService implements UserDetailsService {
     private static Logger logger = LoggerFactory
             .getLogger(DefaultUserDetailsService.class);
-    private UserFetcher userFetcher = new MockUserFetcher();
+    private UserAuthConnector userAuthConnector;
+    private AccountCredentialConnector accountCredentialConnector;
+    private AccountAliasConnector accountAliasConnector;
     private String defaultPassword;
+    private BeanMapper beanMapper = new BeanMapper();
+    private boolean debug;
+    private TenantHolder tenantHolder;
 
     /**
      * 遇到的问题.
@@ -26,32 +39,83 @@ public class DefaultUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username)
             throws UsernameNotFoundException {
         logger.debug("username : {}", username);
-        logger.debug("userFetcher : {}", userFetcher);
+
+        String tenantId = tenantHolder.getTenantId();
+
+        if (debug) {
+            SpringSecurityUserAuth userAuth = new SpringSecurityUserAuth();
+            userAuth.setId("1");
+            userAuth.setUsername(username);
+            userAuth.setDisplayName(username);
+            userAuth.setPermissions(Collections.singletonList("*"));
+            userAuth.setTenantId(tenantId);
+
+            return userAuth;
+        }
+
+        if (username == null) {
+            logger.info("username is null");
+
+            return null;
+        }
+
+        username = username.toLowerCase();
 
         try {
-            UserInfo userInfo = userFetcher.getUserInfo(username);
+            username = accountAliasConnector.findUsernameByAlias(username);
 
-            String password = userInfo.getPassword();
+            UserAuthDTO userAuthDto = userAuthConnector.findByUsername(
+                    username, tenantId);
 
-            if (defaultPassword != null) {
-                password = defaultPassword;
+            if (userAuthDto == null) {
+                logger.info("cannot find user : {}, {}", username, tenantId);
+
+                throw new UsernameNotFoundException(username + "," + tenantId);
             }
 
-            UserDetails userDetails = new UserDetailsBuilder(userInfo, password)
-                    .build();
+            String password = accountCredentialConnector.findPassword(username,
+                    tenantId);
 
-            return userDetails;
+            SpringSecurityUserAuth userAuthResult = new SpringSecurityUserAuth();
+            beanMapper.copy(userAuthDto, userAuthResult);
+            userAuthResult.setPassword(password);
+
+            if (defaultPassword != null) {
+                userAuthResult.setPassword(defaultPassword);
+            }
+
+            return userAuthResult;
+        } catch (UsernameNotFoundException ex) {
+            throw ex;
         } catch (Exception ex) {
             logger.error(ex.getMessage(), ex);
             throw new UsernameNotFoundException(username, ex);
         }
     }
 
-    public void setUserFetcher(UserFetcher userFetcher) {
-        this.userFetcher = userFetcher;
+    public void setUserAuthConnector(UserAuthConnector userAuthConnector) {
+        this.userAuthConnector = userAuthConnector;
+    }
+
+    public void setAccountCredentialConnector(
+            AccountCredentialConnector accountCredentialConnector) {
+        this.accountCredentialConnector = accountCredentialConnector;
+    }
+
+    public void setAccountAliasConnector(
+            AccountAliasConnector accountAliasConnector) {
+        this.accountAliasConnector = accountAliasConnector;
     }
 
     public void setDefaultPassword(String defaultPassword) {
         this.defaultPassword = defaultPassword;
+    }
+
+    public void setDebug(boolean debug) {
+        this.debug = debug;
+    }
+
+    public void setTenantHolder(TenantHolder tenantHolder) {
+        this.tenantHolder = tenantHolder;
     }
 }

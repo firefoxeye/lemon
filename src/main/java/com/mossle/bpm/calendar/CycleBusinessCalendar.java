@@ -4,10 +4,12 @@ import java.util.Date;
 
 import org.activiti.engine.ActivitiException;
 import org.activiti.engine.impl.calendar.CronExpression;
-import org.activiti.engine.impl.util.ClockUtil;
 
+/**
+ * 循环.
+ */
 public class CycleBusinessCalendar extends AdvancedBusinessCalendar {
-    public Date resolveDuedate(String duedate) {
+    public Date resolveDuedate(String duedate, int maxIterations) {
         String textWithoutBusiness = duedate;
         boolean isBusinessTime = textWithoutBusiness.startsWith("business");
 
@@ -20,9 +22,9 @@ public class CycleBusinessCalendar extends AdvancedBusinessCalendar {
             if (textWithoutBusiness.startsWith("R")) {
                 return new DurationUtil(duedate, this).getDateAfter();
             } else {
-                CronExpression ce = new CronExpression(duedate);
+                CronExpression ce = new CronExpression(duedate, null);
 
-                return ce.getTimeAfter(ClockUtil.getCurrentTime());
+                return ce.getTimeAfter(new Date());
             }
         } catch (Exception e) {
             throw new ActivitiException("Failed to parse cron expression: "

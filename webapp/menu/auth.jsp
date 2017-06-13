@@ -1,45 +1,42 @@
 <%@ page language="java" pageEncoding="UTF-8" %>
+<style type="text/css">
+#accordion .panel-heading {
+	cursor: pointer;
+}
+#accordion .panel-body {
+	padding:0px;
+}
+</style>
+
       <!-- start of sidebar -->
-      <aside id="m-sidebar" class="accordion span2" data-spy="affix" data-offset-top="100">
+<div class="panel-group col-md-2" id="accordion" role="tablist" aria-multiselectable="true" style="padding-top:65px;">
 
-        <div class="accordion-group">
-          <div class="accordion-heading">
-            <a class="accordion-toggle" data-toggle="collapse" data-parent="#m-sidebar" href="#collapse-auth-user">
-              <i class="icon-user"></i>
-              <span class="title"><spring:message code="layout.leftmenu.authmanage" text="权限管理"/></span>
-            </a>
-          </div>
-          <div id="collapse-auth-user" class="accordion-body collapse ${currentMenu == 'auth-user' ? 'in' : ''}">
-            <ul class="accordion-inner nav nav-list">
-			  <li class="m-icn-view-users"><a href="${scopePrefix}/auth/user-connector.do"><spring:message code="layout.leftmenu.usermanage" text="用户管理"/></a></li>
-			  <li class="m-icn-view-users"><a href="${scopePrefix}/auth/role-def.do">角色管理</a></li>
-		    </ul>
-          </div>
-        </div>
-
-        <div class="accordion-group">
-          <div class="accordion-heading">
-            <a class="accordion-toggle" data-toggle="collapse" data-parent="#m-sidebar" href="#collapse-auth">
-              <i class="icon-user"></i>
-              <span class="title">权限配置</span>
-            </a>
-          </div>
-          <div id="collapse-auth" class="accordion-body collapse ${currentMenu == 'auth' ? 'in' : ''}">
-            <ul class="accordion-inner nav nav-list">
-			  <li class="m-icn-view-users"><a href="${scopePrefix}/auth/user-status.do"><spring:message code="layout.leftmenu.usermanage" text="用户管理"/></a></li>
-			  <li class="m-icn-view-users"><a href="${scopePrefix}/auth/role-def.do">角色模板管理</a></li>
-			  <li class="m-icn-view-users"><a href="${scopePrefix}/auth/role.do"><spring:message code="layout.leftmenu.rolemanage" text="角色管理"/></a></li>
-			  <li class="m-icn-view-users"><a href="${scopePrefix}/auth/perm.do"><spring:message code="layout.leftmenu.permmanage" text="授权管理"/></a></li>
-			  <li class="m-icn-view-users"><a href="${scopePrefix}/auth/resc.do"><spring:message code="layout.leftmenu.rescmanage" text="资源管理"/></a></li>
-			  <li class="m-icn-view-users"><a href="${scopePrefix}/auth/oper.do"><spring:message code="layout.leftmenu.opermanage" text="操作管理"/></a></li>
-			  <li class="m-icn-view-users"><a href="${scopePrefix}/auth/access.do"><spring:message code="layout.leftmenu.accessmanage" text="访问权限"/></a></li>
-		    </ul>
-          </div>
-        </div>
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="collapse-header-user" data-toggle="collapse" data-parent="#accordion" href="#collapse-body-auth" aria-expanded="true" aria-controls="collapse-body-auth">
+      <h4 class="panel-title">
+	    <i class="glyphicon glyphicon-list"></i>
+        权限配置
+      </h4>
+    </div>
+    <div id="collapse-body-auth" class="panel-collapse collapse ${currentMenu == 'auth' ? 'in' : ''}" role="tabpanel" aria-labelledby="collapse-header-auth">
+      <div class="panel-body">
+        <ul class="nav nav-list">
+		  <li><a href="${tenantPrefix}/auth/user-connector-list.do"><i class="glyphicon glyphicon-list"></i> <spring:message code="layout.leftmenu.usermanage" text="用户管理"/></a></li>
+		  <li><a href="${tenantPrefix}/auth/role-viewList.do"><i class="glyphicon glyphicon-list"></i> <spring:message code="layout.leftmenu.rolemanage" text="角色管理"/></a></li>
+		  <li><a href="${tenantPrefix}/auth/perm-type-list.do"><i class="glyphicon glyphicon-list"></i> 授权分类</a></li>
+		  <li><a href="${tenantPrefix}/auth/perm-list.do"><i class="glyphicon glyphicon-list"></i> <spring:message code="layout.leftmenu.permmanage" text="授权管理"/></a></li>
+		  <li><a href="${tenantPrefix}/auth/access-list.do"><i class="glyphicon glyphicon-list"></i> <spring:message code="layout.leftmenu.accessmanage" text="访问权限"/></a></li>
+		  <li><a href="${tenantPrefix}/auth/menu-list.do"><i class="glyphicon glyphicon-list"></i> 菜单管理</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
 
 		<footer id="m-footer" class="text-center">
 		  <hr>
 		  &copy;Mossle
 		</footer>
-      </aside>
+
+</div>
       <!-- end of sidebar -->
+

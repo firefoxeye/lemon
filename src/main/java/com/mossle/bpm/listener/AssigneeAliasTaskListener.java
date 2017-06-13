@@ -1,7 +1,15 @@
 package com.mossle.bpm.listener;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import javax.annotation.Resource;
 
+import com.mossle.bpm.rule.AssigneeRule;
+import com.mossle.bpm.rule.PositionAssigneeRule;
+import com.mossle.bpm.rule.RuleMatcher;
+import com.mossle.bpm.rule.SuperiorAssigneeRule;
 import com.mossle.bpm.support.DefaultTaskListener;
 
 import org.activiti.engine.delegate.DelegateTask;
@@ -16,111 +24,70 @@ public class AssigneeAliasTaskListener extends DefaultTaskListener {
     private static Logger logger = LoggerFactory
             .getLogger(AssigneeAliasTaskListener.class);
     private JdbcTemplate jdbcTemplate;
+    private Map<RuleMatcher, AssigneeRule> assigneeRuleMap = new HashMap<RuleMatcher, AssigneeRule>();
+
+    public AssigneeAliasTaskListener() {
+        SuperiorAssigneeRule superiorAssigneeRule = new SuperiorAssigneeRule();
+        PositionAssigneeRule positionAssigneeRule = new PositionAssigneeRule();
+        assigneeRuleMap.put(new RuleMatcher("常用语"), superiorAssigneeRule);
+        assigneeRuleMap.put(new RuleMatcher("岗位"), positionAssigneeRule);
+    }
 
     @Override
-    public void onAssignment(DelegateTask delegateTask) throws Exception {
+    public void onCreate(DelegateTask delegateTask) throws Exception {
         String assignee = delegateTask.getAssignee();
+        logger.debug("assignee : {}", assignee);
 
-        if ("部门经理".equals(assignee)) {
-            String processInstanceId = delegateTask.getProcessInstanceId();
-            String username = Context.getCommandContext()
-                    .getHistoricProcessInstanceEntityManager()
-                    .findHistoricProcessInstance(processInstanceId)
-                    .getStartUserId();
-            Long userId = this.getUserId(username);
-            Long managerId = this.getManagerId(userId, null);
+        if (assignee == null) {
+            return;
+        }
 
-            if (managerId == null) {
-                throw new IllegalStateException(
-                        "cannot find manager for user : " + username);
+        for (Map.Entry<RuleMatcher, AssigneeRule> entry : assigneeRuleMap
+                .entrySet()) {
+            RuleMatcher ruleMatcher = entry.getKey();
+
+            if (!ruleMatcher.matches(assignee)) {
+                continue;
             }
 
-            delegateTask.setAssignee(this.getUsername(managerId));
+            String value = ruleMatcher.getValue(assignee);
+            AssigneeRule assigneeRule = entry.getValue();
+            logger.debug("value : {}", value);
+            logger.debug("assigneeRule : {}", assigneeRule);
+
+            if (assigneeRule instanceof SuperiorAssigneeRule) {
+                this.processSuperior(delegateTask, assigneeRule, value);
+            } else if (assigneeRule instanceof PositionAssigneeRule) {
+                this.processPosition(delegateTask, assigneeRule, value);
+            }
         }
     }
 
-    public Long getManagerId(Long userId, Long departmentId) {
-        Long targetDepartmentId = null;
-
-        if (departmentId == null) {
-            // 获得流程发起人的部门
-            targetDepartmentId = this.getDepartmentId(userId);
-        } else {
-            targetDepartmentId = this.getHigherDepartmentId(departmentId);
-        }
-
-        if (targetDepartmentId == null) {
-            return null;
-        }
-
-        // 获得部门负责人
-        Long managerId = this.getManagerId(targetDepartmentId);
-
-        // 如果部门没有负责人，或者负责人和发起人是一个人，就找上一个部门
-        if ((managerId == null) || managerId.equals(userId)) {
-            return this.getManagerId(userId, targetDepartmentId);
-        } else {
-            return managerId;
-        }
+    public void processSuperior(DelegateTask delegateTask,
+            AssigneeRule assigneeRule, String value) {
+        String processInstanceId = delegateTask.getProcessInstanceId();
+        String startUserId = Context.getCommandContext()
+                .getHistoricProcessInstanceEntityManager()
+                .findHistoricProcessInstance(processInstanceId)
+                .getStartUserId();
+        String userId = assigneeRule.process(startUserId);
+        logger.debug("userId : {}", userId);
+        delegateTask.setAssignee(userId);
     }
 
-    // ~ ======================================================================
-    public Long getDepartmentId(Long userId) {
-        try {
-            return jdbcTemplate.queryForObject(
-                    "select parent_entity_id from party_struct "
-                            + "where struct_type_id=1 and child_entity_id=?",
-                    Long.class, userId);
-        } catch (Exception ex) {
-            logger.info(ex.getMessage(), ex);
+    public void processPosition(DelegateTask delegateTask,
+            AssigneeRule assigneeRule, String value) {
+        String processInstanceId = delegateTask.getProcessInstanceId();
+        String startUserId = Context.getCommandContext()
+                .getHistoricProcessInstanceEntityManager()
+                .findHistoricProcessInstance(processInstanceId)
+                .getStartUserId();
+        List<String> userIds = assigneeRule.process(value, startUserId);
+        logger.debug("userIds : {}", userIds);
 
-            return null;
+        if (!userIds.isEmpty()) {
+            delegateTask.setAssignee(userIds.get(0));
         }
-    }
-
-    public Long getManagerId(Long departmentId) {
-        try {
-            return jdbcTemplate.queryForObject(
-                    "select parent_entity_id from party_struct "
-                            + "where struct_type_id=2 and child_entity_id=?",
-                    Long.class, departmentId);
-        } catch (Exception ex) {
-            logger.info(ex.getMessage(), ex);
-
-            return null;
-        }
-    }
-
-    public Long getHigherDepartmentId(Long departmentId) {
-        try {
-            return jdbcTemplate.queryForObject(
-                    "select parent_entity_id from party_struct "
-                            + "where struct_type_id=1 and child_entity_id=?",
-                    Long.class, departmentId);
-        } catch (Exception ex) {
-            logger.info(ex.getMessage(), ex);
-
-            return null;
-        }
-    }
-
-    public String getUsername(Long userId) {
-        Long id = jdbcTemplate.queryForObject(
-                "select reference from party_entity where id=?", Long.class,
-                userId);
-
-        return jdbcTemplate.queryForObject(
-                "select username from user_base where id=?", String.class, id);
-    }
-
-    public Long getUserId(String username) {
-        Long userId = jdbcTemplate.queryForObject(
-                "select id from user_base where username=?", Long.class,
-                username);
-
-        return jdbcTemplate.queryForObject(
-                "select id from party_entity where type_id=1 and reference=?",
-                Long.class, userId);
     }
 
     @Resource

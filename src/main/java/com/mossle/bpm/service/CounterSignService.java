@@ -1,16 +1,19 @@
 package com.mossle.bpm.service;
 
-import org.activiti.engine.HistoryService;
+import javax.annotation.Resource;
+
+import com.mossle.spi.humantask.CounterSignDTO;
+import com.mossle.spi.humantask.TaskDefinitionConnector;
+
+import org.activiti.engine.ProcessEngine;
 import org.activiti.engine.RuntimeService;
-import org.activiti.engine.TaskService;
+import org.activiti.engine.impl.persistence.entity.ExecutionEntity;
 import org.activiti.engine.runtime.Execution;
 
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.stereotype.Service;
 
@@ -22,12 +25,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class CounterSignService {
     private Logger logger = LoggerFactory.getLogger(CounterSignService.class);
-    @Autowired
-    protected RuntimeService runtimeService;
-    @Autowired
-    protected TaskService taskService;
-    @Autowired
-    protected HistoryService historyService;
+    private ProcessEngine processEngine;
+    private TaskDefinitionConnector taskDefinitionConnector;
 
     public Boolean canComplete(Execution execution, Integer nrOfInstances,
             Integer nrOfActiveInstances, Integer nrOfCompletedInstances,
@@ -42,6 +41,19 @@ public class CounterSignService {
     public Boolean canComplete(Execution execution, Integer rate,
             Integer nrOfInstances, Integer nrOfActiveInstances,
             Integer nrOfCompletedInstances, Integer loopCounter) {
+        String activityId = execution.getActivityId();
+        String processDefinitionId = ((ExecutionEntity) execution)
+                .getProcessInstance().getProcessDefinitionId();
+
+        RuntimeService runtimeService = processEngine.getRuntimeService();
+
+        CounterSignDTO counterSign = taskDefinitionConnector.findCounterSign(
+                activityId, processDefinitionId);
+
+        if (counterSign != null) {
+            rate = counterSign.getRate();
+        }
+
         String agreeCounterName = "agreeCounter";
         Object agreeCounter = runtimeService.getVariable(execution.getId(),
                 agreeCounterName);
@@ -57,8 +69,8 @@ public class CounterSignService {
                     ++integerCounter);
         }
 
-        logger.debug("execution: {}"
-                + ToStringBuilder.reflectionToString(execution));
+        logger.debug("execution: {}",
+                ToStringBuilder.reflectionToString(execution));
         logger.debug(
                 "rate={}, nrOfInstances={}, nrOfActiveInstances={}, nrOfComptetedInstances={}, loopCounter={}",
                 new Object[] { rate, nrOfInstances, nrOfActiveInstances,
@@ -67,10 +79,21 @@ public class CounterSignService {
         // 计算通过的比例，以此决定是否结束会签
         double completeRate = nrOfCompletedInstances.doubleValue()
                 / nrOfInstances;
-        boolean canComlete = (completeRate * 100) >= rate;
-        logger.debug("rate: {}, completeRate: {}, canComlete={}", new Object[] {
-                rate, completeRate, canComlete });
+        boolean canComplete = (completeRate * 100) >= rate;
+        logger.debug("rate: {}, completeRate: {}, canComplete={}",
+                new Object[] { rate, completeRate, canComplete });
 
-        return canComlete;
+        return canComplete;
+    }
+
+    @Resource
+    public void setProcessEngine(ProcessEngine processEngine) {
+        this.processEngine = processEngine;
+    }
+
+    @Resource
+    public void setTaskDefinitionConnector(
+            TaskDefinitionConnector taskDefinitionConnector) {
+        this.taskDefinitionConnector = taskDefinitionConnector;
     }
 }

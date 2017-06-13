@@ -2,6 +2,7 @@ package com.mossle.core.export;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import com.mossle.core.util.ReflectUtils;
 
@@ -53,12 +54,21 @@ public class TableModel {
     }
 
     public String getValue(int i, int j) {
+        String header = getHeader(j);
+        Object object = data.get(i);
+
+        if (object instanceof Map) {
+            return this.getValueFromMap(object, header);
+        } else {
+            return this.getValueReflect(object, header);
+        }
+    }
+
+    public String getValueReflect(Object instance, String fieldName) {
         try {
-            String header = getHeader(j);
-            Object object = data.get(i);
-            String methodName = ReflectUtils
-                    .getGetterMethodName(object, header);
-            Object value = ReflectUtils.getMethodValue(object, methodName);
+            String methodName = ReflectUtils.getGetterMethodName(instance,
+                    fieldName);
+            Object value = ReflectUtils.getMethodValue(instance, methodName);
 
             return (value == null) ? "" : value.toString();
         } catch (Exception ex) {
@@ -66,5 +76,12 @@ public class TableModel {
 
             return "";
         }
+    }
+
+    public String getValueFromMap(Object instance, String fieldName) {
+        Map<String, Object> map = (Map<String, Object>) instance;
+        Object value = map.get(fieldName);
+
+        return (value == null) ? "" : value.toString();
     }
 }
